@@ -1150,9 +1150,10 @@
     <!-- END: New Expense Details Modal -->
 
     <script>
-        const SUPABASE_URL = 'https://plmevfyxpngzymvzvkzn.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsbWV2Znl4cG5nenltdnp2a3puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA3NjM5NDEsImV4cCI6MjA2NjMzOTk0MX0.lUm3efHFCL3aAB-PL7H54BpnvcpbXxp1BeUzw0yjp5c';
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const SUPABASE_URL = 'https://rhgthtvvgtcczsyjnhol.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJoZ3RodHZ2Z3RjY3pzeWpuaG9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0ODQwNTgsImV4cCI6MjA5MzA2MDA1OH0.VKyBKb3Ud-QF3XLf7HgOnQhbbQzcxYu23vxHTNhC6SU';
+        let sbClient;
+        try { sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); } catch(e) { console.error("Supabase init failed:", e); }
         
         let currentActiveViewId = null;
         let loggedInUser = null;
@@ -1189,39 +1190,22 @@
             }
         };
 
-        // START: New function to fetch masterlist from Supabase with pagination
         async function fetchMasterlistFromSupabase() {
+            if (!sbClient) { masterlistData = []; return; }
             try {
-                const CHUNK_SIZE = 1000; // Supabase default limit
-                let offset = 0;
-                let allData = [];
-                let hasMore = true;
-
-                while(hasMore) {
-                    const { data, error } = await supabase
-                        .from('masterlist')
-                        .select('*')
-                        .range(offset, offset + CHUNK_SIZE - 1);
-
-                    if (error) {
-                        throw error;
-                    }
-
-                    if (data && data.length > 0) {
-                        allData = allData.concat(data);
-                        offset += CHUNK_SIZE;
-                    } else {
-                        hasMore = false;
-                    }
+                const CHUNK_SIZE = 1000;
+                let offset = 0, allData = [], hasMore = true, guard = 0;
+                while (hasMore && guard < 50) {
+                    guard++;
+                    const { data, error } = await sbClient.from('masterlist').select('*').range(offset, offset + CHUNK_SIZE - 1);
+                    if (error || !data) { console.warn('masterlist fetch stopped:', error); break; }
+                    allData = allData.concat(data);
+                    if (data.length < CHUNK_SIZE) hasMore = false;
+                    else offset += CHUNK_SIZE;
                 }
                 masterlistData = allData;
-            } catch (error) {
-                console.error("Error fetching masterlist from Supabase:", error);
-                // Optionally, display an error to the user
-                showBlurredMessage('Could not load essential data. Please refresh.', 3000);
-            }
+            } catch(e) { console.error('fetchMasterlist error:', e); masterlistData = []; }
         }
-        // END: New Supabase fetch function
 
         function updateAndShowUserCard() {
             const userCard = document.getElementById('userCard');
@@ -1268,13 +1252,13 @@
                     .map(row => row['medical rep'])
                 : [];
 
-            let requestsQuery = supabase.from('requests').select('*').eq('status', 'Requested');
+            let requestsQuery = sbClient.from('requests').select('*').eq('status', 'Requested');
             if (loggedInUser.title === 'District Manager') {
                 if (dmReps.length > 0) requestsQuery = requestsQuery.in('medRep', dmReps);
                 else requestsQuery = requestsQuery.eq('medRep', 'no-one');
             }
 
-            let expensesQuery = supabase.from('expenses').select('id, role, employee_name, total_amount, report_date, report_type, details').eq('status', 'Pending');
+            let expensesQuery = sbClient.from('expenses').select('id, role, employee_name, total_amount, report_date, report_type, details').eq('status', 'Pending');
             if (loggedInUser.title === 'District Manager') {
                  if (dmReps.length > 0) expensesQuery = expensesQuery.in('employee_name', dmReps);
                  else expensesQuery = expensesQuery.eq('employee_name', 'no-one');
@@ -1364,11 +1348,11 @@
 
         function subscribeToNotifications() {
             if (notificationChannel) {
-                supabase.removeChannel(notificationChannel);
+                sbClient.removeChannel(notificationChannel);
                 notificationChannel = null;
             }
 
-            notificationChannel = supabase.channel('public-notifications')
+            notificationChannel = sbClient.channel('public-notifications')
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'requests' }, () => {
                     setTimeout(fetchNotifications, 500);
                 })
@@ -1386,7 +1370,7 @@
         }
         
         async function showRequestModal(requestId) {
-            const { data, error } = await supabase.from('requests').select('*').eq('id', requestId).single();
+            const { data, error } = await sbClient.from('requests').select('*').eq('id', requestId).single();
 
             if (error) {
                 console.error('Error fetching request details:', error);
@@ -1445,7 +1429,7 @@
         }
 
         async function updateRequestStatus(requestId, newStatus) {
-            const { error } = await supabase.from('requests').update({ status: newStatus }).eq('id', requestId);
+            const { error } = await sbClient.from('requests').update({ status: newStatus }).eq('id', requestId);
 
             if (error) {
                 console.error('Error updating status:', error);
@@ -1462,7 +1446,7 @@
         }
 
         async function showExpenseModal(expenseId) {
-            const { data, error } = await supabase.from('expenses').select('*').eq('id', expenseId).single();
+            const { data, error } = await sbClient.from('expenses').select('*').eq('id', expenseId).single();
 
             if (error) {
                 console.error('Error fetching expense details:', error);
@@ -1522,7 +1506,7 @@
         }
 
         async function updateExpenseStatus(expenseId, newStatus) {
-            const { error } = await supabase.from('expenses').update({ status: newStatus }).eq('id', expenseId);
+            const { error } = await sbClient.from('expenses').update({ status: newStatus }).eq('id', expenseId);
 
             if (error) {
                 console.error('Error updating expense status:', error);
@@ -1553,7 +1537,7 @@
             document.getElementById('password').value = '';
             
             if (notificationChannel) {
-                supabase.removeChannel(notificationChannel);
+                sbClient.removeChannel(notificationChannel);
                 notificationChannel = null;
                 console.log('Unsubscribed from notifications.');
             }
@@ -1614,7 +1598,7 @@
                 return;
             }
             try {
-                const { data, error } = await supabase.from('users').select('username, title, password').eq('username', usernameInput).limit(1);
+                const { data, error } = await sbClient.from('users').select('username, title, password').eq('username', usernameInput).limit(1);
                 const supabaseUser = (data && data.length > 0) ? data[0] : null;
                 if (error || !supabaseUser || supabaseUser.password.trim() !== passwordInput) {
                     loginError.textContent = 'Invalid username or password.';
@@ -1839,116 +1823,96 @@
             });
         }
         
-        document.addEventListener('DOMContentLoaded', async function() {
+        document.addEventListener('DOMContentLoaded', function() {
+
+            // 1. Dismiss intro at 3s — guaranteed, no async
             const introOverlay = document.getElementById('introOverlay');
-            setTimeout(() => {
-                introOverlay.classList.add('fade-out');
-                setTimeout(() => introOverlay.remove(), 500);
-            }, 3000);
-
-            // FIX: Call the new Supabase function
-            await fetchMasterlistFromSupabase();
-            const storedUser = localStorage.getItem('loggedInUser');
-            const lastPage = localStorage.getItem('currentPage');
-
-            setTimeout(() => {
-                if (storedUser) {
-                    loggedInUser = JSON.parse(storedUser);
-                    showAppContent();
-                    if (lastPage && lastPage !== 'home' && lastPage !== 'null') {
-                        const allPages = [...navConfig.home.pages, ...(navConfig.home.pages.find(p => p.id === 'dm-crm')?.subPages || [])];
-                        const targetPage = allPages.find(p => p.id === lastPage);
-                        if (targetPage && (targetPage.roles.includes(loggedInUser.title) || loggedInUser.title === 'admin')) {
-                            if (targetPage.isNested) {
-                                loadPage('dm-crm');
-                                setTimeout(() => loadPage(lastPage), 500);
-                            } else {
-                                loadPage(lastPage);
-                            }
-                        } else {
-                            showHome();
-                        }
-                    } else {
-                        showHome();
-                    }
-                } else {
-                    showLoginPage();
+            function dismissIntro() {
+                if (introOverlay && introOverlay.parentNode) {
+                    introOverlay.classList.add('fade-out');
+                    setTimeout(() => { if (introOverlay.parentNode) introOverlay.remove(); }, 500);
                 }
-            }, 3500);
+            }
+            setTimeout(dismissIntro, 3000);
 
+            // 2. Wire all event listeners synchronously
             document.getElementById('loginButton').addEventListener('click', handleLogin);
             document.getElementById('logoutButton').addEventListener('click', handleLogout);
             document.getElementById('sideMenuLogoutButton').addEventListener('click', handleLogout);
+            document.getElementById('mobileMenuButton').addEventListener('click', openSideMenu);
+            document.getElementById('closeMenuButton').addEventListener('click', closeSideMenu);
+            document.getElementById('sideMenuOverlay').addEventListener('click', closeSideMenu);
+            document.getElementById('modalCloseButton').addEventListener('click', closeRequestModal);
+            document.getElementById('requestModal').addEventListener('click', (e) => { if (e.target.id === 'requestModal') closeRequestModal(); });
+            document.getElementById('modalExpenseCloseButton').addEventListener('click', closeExpenseModal);
+            document.getElementById('expenseModal').addEventListener('click', (e) => { if (e.target.id === 'expenseModal') closeExpenseModal(); });
+
             document.getElementById('backButton').addEventListener('click', () => {
-                if (currentActiveViewId === 'dmCrmView') {
-                    showHome();
-                } else if (currentActiveViewId === 'nestedIframeView') {
-                    loadPage('dm-crm');
-                } else if (lastPageHistory.length > 0) {
+                if (currentActiveViewId === 'dmCrmView') { showHome(); }
+                else if (currentActiveViewId === 'nestedIframeView') { loadPage('dm-crm'); }
+                else if (lastPageHistory.length > 0) {
                     const lastPageId = lastPageHistory.pop();
                     const allPages = [...navConfig.home.pages, ...(navConfig.home.pages.find(p => p.id === 'dm-crm')?.subPages || [])];
                     const pageConfig = allPages.find(p => p.viewId === lastPageId);
                     loadPage(pageConfig ? pageConfig.id : null);
-                } else {
-                    showHome();
-                }
+                } else { showHome(); }
             });
-            document.getElementById('mobileMenuButton').addEventListener('click', openSideMenu);
-            document.getElementById('closeMenuButton').addEventListener('click', closeSideMenu);
-            document.getElementById('sideMenuOverlay').addEventListener('click', closeSideMenu);
-            
+
             document.getElementById('refreshButton').addEventListener('click', async () => {
                 showBlurredMessage('Refreshing...', 1000);
-                await fetchMasterlistFromSupabase(); // FIX: Refresh from Supabase
-                fetchNotifications(); 
-
+                await fetchMasterlistFromSupabase();
+                fetchNotifications();
                 if (!currentActiveViewId) return;
                 const activeView = document.getElementById(currentActiveViewId);
                 if (!activeView) return;
-
-                if (currentActiveViewId === 'homeView') {
-                    renderMainGrid();
-                } 
+                if (currentActiveViewId === 'homeView') { renderMainGrid(); }
                 else if (currentActiveViewId === 'dmCrmView') {
                     const config = navConfig.home.pages.find(p => p.id === 'dm-crm');
-                    if (config) {
-                        renderSubCards(document.getElementById('dmCrmSubGrid'), config.subPages);
-                    }
-                }
-                else {
+                    if (config) renderSubCards(document.getElementById('dmCrmSubGrid'), config.subPages);
+                } else {
                     const iframe = activeView.querySelector('iframe');
                     if (iframe && iframe.contentWindow) {
-                        const loadingOverlay = activeView.querySelector('.loading');
-                        if (loadingOverlay) loadingOverlay.classList.add('show');
-                        const currentSrc = iframe.src.split('?')[0];
-                        iframe.src = `${currentSrc}?t=${new Date().getTime()}`;
+                        const lo = activeView.querySelector('.loading');
+                        if (lo) lo.classList.add('show');
+                        const src = iframe.src.split('?')[0];
+                        iframe.src = `${src}?t=${new Date().getTime()}`;
                     }
                 }
             });
 
             const notificationBell = document.getElementById('notificationBell');
             const notificationDropdown = document.getElementById('notificationDropdown');
-            notificationBell.addEventListener('click', (event) => {
-                event.stopPropagation();
-                notificationDropdown.classList.toggle('hidden');
-            });
+            notificationBell.addEventListener('click', (e) => { e.stopPropagation(); notificationDropdown.classList.toggle('hidden'); });
+            document.addEventListener('click', (e) => { if (!notificationBell.contains(e.target)) notificationDropdown.classList.add('hidden'); });
 
-            document.addEventListener('click', (event) => {
-                if (!notificationBell.contains(event.target)) {
-                    notificationDropdown.classList.add('hidden');
+            // 3. Boot after 500ms — fetch masterlist (max 4s) then show login or home
+            setTimeout(async function() {
+                try {
+                    await Promise.race([
+                        fetchMasterlistFromSupabase(),
+                        new Promise(resolve => setTimeout(resolve, 4000))
+                    ]);
+                } catch(e) { /* never throws but safety net */ }
+
+                let storedUser = localStorage.getItem('loggedInUser');
+                const lastPage = localStorage.getItem('currentPage');
+                if (storedUser) {
+                    try { loggedInUser = JSON.parse(storedUser); } catch(e) { localStorage.clear(); loggedInUser = null; }
                 }
-            });
-            
-            document.getElementById('modalCloseButton').addEventListener('click', closeRequestModal);
-            document.getElementById('requestModal').addEventListener('click', (event) => {
-                if (event.target.id === 'requestModal') closeRequestModal();
-            });
-
-            // Add event listeners for new expense modal
-            document.getElementById('modalExpenseCloseButton').addEventListener('click', closeExpenseModal);
-            document.getElementById('expenseModal').addEventListener('click', (event) => {
-                if (event.target.id === 'expenseModal') closeExpenseModal();
-            });
+                if (loggedInUser) {
+                    showAppContent();
+                    if (lastPage && lastPage !== 'home' && lastPage !== 'null') {
+                        const allPages = [...navConfig.home.pages, ...(navConfig.home.pages.find(p => p.id === 'dm-crm')?.subPages || [])];
+                        const targetPage = allPages.find(p => p.id === lastPage);
+                        if (targetPage && (targetPage.roles.includes(loggedInUser.title) || loggedInUser.title === 'admin')) {
+                            if (targetPage.isNested) { loadPage('dm-crm'); setTimeout(() => loadPage(lastPage), 500); }
+                            else { loadPage(lastPage); }
+                        } else { showHome(); }
+                    } else { showHome(); }
+                } else {
+                    showLoginPage();
+                }
+            }, 500);
         });
     </script>
 </body>
