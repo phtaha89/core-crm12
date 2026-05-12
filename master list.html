@@ -12,7 +12,7 @@
     <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
     <!-- Supabase CDN for the client library. This was the missing link. -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
+
     <style>
         * {
             margin: 0;
@@ -142,7 +142,7 @@
         .stats-item {
             text-align: center;
             padding: 8px;
-            cursor: pointer; /* Indicate clickable */
+            cursor: pointer;
             transition: background-color 0.2s ease;
         }
 
@@ -158,9 +158,8 @@
             line-height: 1;
         }
 
-        /* Style for duplicated HCPs number */
         .stats-number.red {
-            color: #ef4444; /* Tailwind red-500 equivalent */
+            color: #ef4444;
         }
 
         .stats-label {
@@ -181,14 +180,14 @@
         /* Table */
         .table-container {
             padding: 0;
-            overflow-x: auto; /* Allows horizontal scrolling */
+            overflow-x: auto;
         }
 
         .hcp-table {
             width: 100%;
             border-collapse: collapse;
             background: white;
-            min-width: 800px; /* Ensure table doesn't shrink too much, allowing scroll */
+            min-width: 800px;
         }
 
         .hcp-table th {
@@ -204,7 +203,7 @@
             position: sticky;
             top: 0;
             z-index: 10;
-            white-space: nowrap; /* Added this line */
+            white-space: nowrap;
         }
 
         .hcp-table td {
@@ -212,10 +211,10 @@
             border-bottom: 1px solid #f1f5f9;
             font-size: 14px;
             vertical-align: top;
-            white-space: nowrap; /* Keep content on a single line */
-            overflow: hidden; /* Hide overflowing content */
-            text-overflow: ellipsis; /* Show ellipsis for overflow */
-            max-width: 150px; /* Adjust as needed for column width */
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 150px;
         }
 
         .hcp-table tr:hover {
@@ -227,7 +226,7 @@
             cursor: pointer;
             font-weight: 500;
             text-decoration: none;
-            display: block; /* Ensure the link takes full cell width */
+            display: block;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -322,7 +321,6 @@
             flex-grow: 1;
         }
 
-        /* Redesigned HCP Details Card */
         .hcp-details {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -399,7 +397,6 @@
             display: inline-block;
         }
 
-        /* Full-width layout for single column when needed */
         .detail-section.full-width {
             grid-column: 1 / -1;
         }
@@ -416,7 +413,6 @@
             opacity: 0.5;
         }
 
-        /* Loading */
         .loading-overlay {
             display: flex;
             justify-content: center;
@@ -444,25 +440,24 @@
             100% { transform: rotate(360deg); }
         }
 
-        /* Responsive */
         @media (max-width: 768px) {
             body {
                 padding: 8px;
             }
-            
+
             .filters-grid {
                 grid-template-columns: 1fr;
             }
-            
+
             .stats-bar {
                 grid-template-columns: repeat(3, 1fr);
                 gap: 16px;
             }
-            
+
             .header h1 {
                 font-size: 20px;
             }
-            
+
             .modal-content {
                 margin: 10px;
                 max-width: none;
@@ -487,6 +482,7 @@
             }
         }
     </style>
+<base target="_blank">
 </head>
 <body>
     <div class="loading-overlay" id="loadingOverlay">
@@ -513,7 +509,6 @@
                         <option value="">All Medical Reps</option>
                     </select>
                 </div>
-                <!-- The Area filter is removed as per your request -->
                 <div class="filter-group">
                     <label for="brickFilter">Brick</label>
                     <select id="brickFilter" class="filter-select">
@@ -539,7 +534,6 @@
             <button id="exportBtn" class="action-button" title="Export Filtered Data to XLSX">
                 <i class="fas fa-file-excel"></i> Export
             </button>
-            <!-- New Edit List Button -->
             <button id="editListBtn" class="action-button" title="Edit Current List" style="display: none;">
                 <i class="fas fa-edit"></i> Edit List
             </button>
@@ -568,8 +562,8 @@
                     <tr>
                         <th>HCPS</th>
                         <th>Speciality</th>
-                        <th>Account</th>
-                        <th>Brick</th> <!-- Changed from Area to Brick -->
+                        <th>Class</th>
+                        <th>Brick</th>
                         <th>Medical Rep</th>
                         <th>District Manager</th>
                     </tr>
@@ -593,92 +587,16 @@
             </div>
             <div class="modal-body">
                 <div class="hcp-details" id="hcpDetails">
-                    <!-- Example structure - will be populated dynamically -->
-                    <div class="detail-section">
-                        <h3><i class="fas fa-user-md"></i> Personal Information</h3>
-                        <div class="detail-row">
-                            <span class="detail-label">Name</span>
-                            <span class="detail-value" id="hcp-name">${hcp.hcps || 'N/A'}</span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="detail-label">Specialty</span>
-                            <span class="detail-value specialty" id="hcp-specialty">${hcp.specialty || 'N/A'}</span>
-                        </div>
-                    </div>
-                    
-                    <div class="detail-section">
-                        <h3><i class="fas fa-building"></i> Practice Information</h3>
-                        <div class="detail-row">
-                            <span class="detail-label">Account</span>
-                            <span class="detail-value" id="hcp-account">${hcp.account || 'N/A'}</span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="detail-label">Brick</span>
-                            <span class="detail-value area" id="hcp-brick">${hcp.brick || 'N/A'}</span>
-                        </div>
-                    </div>
-                    
-                    <div class="detail-section full-width">
-                        <h3><i class="fas fa-users"></i> Team Assignment</h3>
-                        <div class="detail-row">
-                            <span class="detail-label">Medical Rep</span>
-                            <span class="detail-value" id="hcp-rep">${hcp.medicalRep || 'N/A'}</span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="detail-label">District Manager</span>
-                            <span class="detail-value" id="hcp-manager">${hcp.districtManager || 'N/A'}</span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="detail-label">Governorate</span>
-                            <span class="detail-value" id="hcp-governorate">${hcp.governorate || 'N/A'}</span>
-                        </div>
-                    </div>
-
-                    <!-- New section for Available Days -->
-                    <div class="detail-section full-width">
-                        <h3><i class="fas fa-calendar-alt"></i> Available Days</h3>
-                        <div id="hcp-available-days">
-                            <!-- Days will be populated here -->
-                        </div>
-                    </div>
-
-                    <div class="detail-section full-width">
-                        <h3><i class="fas fa-phone"></i> Contact Information</h3>
-                        <div class="detail-row">
-                            <span class="detail-label">Mobile</span>
-                            <span class="detail-value">
-                                ${hcp.mobile ? `<a href="tel:${formattedMobile}">${hcp.mobile}</a>` : 'N/A'}
-                            </span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="detail-label">Address</span>
-                            <span class="detail-value">${hcp.address || 'N/A'}</span>
-                        </div>
-                    </div>
-                    <div class="detail-section full-width">
-                        <h3><i class="fas fa-info-circle"></i> Other Details</h3>
-                        <div class="detail-row">
-                            <span class="detail-label">Class</span>
-                            <span class="detail-value">${hcp.class || 'N/A'}</span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="detail-label">T.V</span>
-                            <span class="detail-value">${hcp.tv || 'N/A'}</span>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
     </div>
-
 
     <script>
         // Supabase configuration
         const SUPABASE_URL = 'https://rhgthtvvgtcczsyjnhol.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJoZ3RodHZ2Z3RjY3pzeWpuaG9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0ODQwNTgsImV4cCI6MjA5MzA2MDA1OH0.VKyBKb3Ud-QF3XLf7HgOnQhbbQzcxYu23vxHTNhC6SU';
 
-        // Correct Supabase client initialization
-        // We need to import the library first (see <head> section), then initialize it.
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let hcpData = [];
@@ -694,17 +612,11 @@
         const specialtyFilterSelect = document.getElementById('specialtyFilter');
         const editListButton = document.getElementById('editListBtn');
 
-        /**
-         * Shows the loading overlay.
-         */
         function showLoading() {
             loadingOverlay.style.display = 'flex';
             loadingOverlay.style.opacity = '1';
         }
 
-        /**
-         * Hides the loading overlay.
-         */
         function hideLoading() {
             loadingOverlay.style.opacity = '0';
             setTimeout(() => {
@@ -712,12 +624,6 @@
             }, 300);
         }
 
-        /**
-         * Fetches all data from a Supabase table using multiple requests to avoid limits.
-         * @param {string} tableName The name of the table to fetch from.
-         * @param {number} batchSize The number of records to fetch per request.
-         * @returns {Promise<Array<Object>>} A promise that resolves with the fetched data.
-         */
         async function fetchAllSupabaseData(tableName, batchSize = 1000) {
             let allData = [];
             let offset = 0;
@@ -726,16 +632,17 @@
             showLoading();
             while (hasMore) {
                 try {
-                    const { data, error, count } = await supabase
+                    const { data, error } = await supabase
                         .from(tableName)
-                        .select('*', { count: 'exact' })
+                        .select('*')
                         .range(offset, offset + batchSize - 1);
 
                     if (error) {
+                        console.error("Supabase error:", error);
                         throw error;
                     }
 
-                    if (data) {
+                    if (data && data.length > 0) {
                         allData = allData.concat(data);
                         console.log(`Fetched ${data.length} records, total so far: ${allData.length}`);
                         if (data.length < batchSize) {
@@ -750,45 +657,97 @@
                 } catch (error) {
                     console.error("Error fetching data from Supabase:", error.message);
                     hasMore = false;
-                    // In a real app, you might want to display a user-friendly error
-                    alert('An error occurred while fetching data. Please try again later.');
+                    // Show error in console but don't block UI with alert
+                    const noResults = document.getElementById('noResults');
+                    noResults.innerHTML = `<div><i class="fas fa-exclamation-triangle"></i></div><p>Error loading data: ${error.message}</p>`;
+                    noResults.style.display = 'flex';
                 }
             }
             hideLoading();
             return allData;
         }
 
-        /**
-         * Prepares the fetched data by applying consistent naming conventions.
-         * @param {Array<Object>} data The raw data fetched from Supabase.
-         * @returns {Array<Object>} The formatted data.
-         */
+        // FIXED: Robust prepareData that handles Supabase's actual column names
         function prepareData(data) {
-    return data.map(item => {
-        const newItem = {};
-        for (const key in item) {
-            let normalizedKey = key.toLowerCase().replace(/[^a-zA-Z0-9]+(.)?/g, (match, chr) => chr ? chr.toUpperCase() : '').replace(/^./, (match) => match.toLowerCase());
+            return data.map(item => {
+                const newItem = {};
+                for (const key in item) {
+                    const lowerKey = key.toLowerCase().trim();
 
-            // Special cases for column names that need custom mapping
-            if (key === 'T.V') {
-                normalizedKey = 'tv';
-            } else if (key === 'Area' || key === 'AREA') {
-                normalizedKey = 'area';
-            }
-
-            newItem[normalizedKey] = item[key];
+                    // Map all possible column name variations to consistent camelCase
+                    switch (lowerKey) {
+                        case 'hcps':
+                        case 'h_c_p_s':
+                            newItem['hcps'] = item[key];
+                            break;
+                        case 'speciality':
+                        case 'specialty':
+                            newItem['speciality'] = item[key];
+                            break;
+                        case 'class':
+                            newItem['class'] = item[key];
+                            break;
+                        case 't.v':
+                        case 'tv':
+                        case 't_v':
+                            newItem['tv'] = item[key];
+                            break;
+                        case 'brick':
+                            newItem['brick'] = item[key];
+                            break;
+                        case 'address':
+                            newItem['address'] = item[key];
+                            break;
+                        case 'mobile':
+                            newItem['mobile'] = item[key];
+                            break;
+                        case 'saturday':
+                            newItem['saturday'] = item[key];
+                            break;
+                        case 'sunday':
+                            newItem['sunday'] = item[key];
+                            break;
+                        case 'monday':
+                            newItem['monday'] = item[key];
+                            break;
+                        case 'tuesday':
+                            newItem['tuesday'] = item[key];
+                            break;
+                        case 'wednesday':
+                            newItem['wednesday'] = item[key];
+                            break;
+                        case 'thursday':
+                            newItem['thursday'] = item[key];
+                            break;
+                        case 'medical rep':
+                        case 'medical_rep':
+                        case 'medicalrep':
+                            newItem['medicalRep'] = item[key];
+                            break;
+                        case 'area':
+                            newItem['area'] = item[key];
+                            break;
+                        case 'district manager':
+                        case 'district_manager':
+                        case 'districtmanager':
+                            newItem['districtManager'] = item[key];
+                            break;
+                        case 'governorate':
+                            newItem['governorate'] = item[key];
+                            break;
+                        case 'id':
+                            newItem['id'] = item[key];
+                            break;
+                        default:
+                            // For any unknown columns, store as-is in lowercase
+                            newItem[lowerKey] = item[key];
+                            break;
+                    }
+                }
+                return newItem;
+            });
         }
-        return newItem;
-    });
-}
 
-
-
-        /**
-         * Calculates the number of duplicated HCP names based on a normalized form.
-         * @param {Array<Object>} data The array of HCP data.
-         * @returns {number} The count of duplicated HCP entries.
-         */
         function calculateDuplicatedCount(data) {
             const normalizedNames = {};
             data.forEach(hcp => {
@@ -805,10 +764,6 @@
             return duplicatedEntriesCount;
         }
 
-        /**
-         * Clears all filter dropdowns and the search input.
-         * If a District Manager is logged in, it re-applies their specific filter.
-         */
         function clearFilters() {
             document.getElementById('districtFilter').value = '';
             document.getElementById('repFilter').value = '';
@@ -826,9 +781,6 @@
             populateFilters();
         }
 
-        /**
-         * Displays only duplicated HCPs in the table, sorted by normalized name.
-         */
         function showDuplicatedHCPs() {
             const normalizedNameCounts = {};
             filteredData.forEach(hcp => {
@@ -857,14 +809,30 @@
             updateStats();
         }
 
-        /**
-         * Initializes the application by fetching data, populating filters, and rendering the table.
-         * Now accepts an optional initialUser for filtering.
-         */
         async function initializeApp(initialUser = null) {
+            console.log('Initializing app...');
+
             hcpData = await fetchAllSupabaseData('masterlist');
+
+            // DEBUG: Log raw data structure
+            if (hcpData.length > 0) {
+                console.log('First raw row:', hcpData[0]);
+                console.log('Raw keys:', Object.keys(hcpData[0]));
+            } else {
+                console.warn('No data returned from Supabase');
+                const noResults = document.getElementById('noResults');
+                noResults.innerHTML = `<div><i class="fas fa-database"></i></div><p>No data found in database</p>`;
+                noResults.style.display = 'flex';
+                return;
+            }
+
             hcpData = prepareData(hcpData);
-            console.log('Total HCPs fetched from Supabase:', hcpData.length);
+
+            // DEBUG: Log prepared data
+            if (hcpData.length > 0) {
+                console.log('First prepared row:', hcpData[0]);
+                console.log('Prepared keys:', Object.keys(hcpData[0]));
+            }
 
             if (initialUser && initialUser.title === 'District Manager' && initialUser.username) {
                 baseDataForUser = hcpData.filter(hcp =>
@@ -888,11 +856,6 @@
             toggleEditListButtonVisibility();
         }
 
-        /**
-         * Populates the filter dropdowns with unique values.
-         * The options for Medical Rep, Brick, and Specialty depend on the
-         * currently selected District Manager and Medical Representative.
-         */
         function populateFilters() {
             const currentDistrictManager = districtFilterSelect.value;
             const currentMedicalRep = repFilterSelect.value;
@@ -914,15 +877,9 @@
             if (currentBrick) {
                 dataForSpecialtyFilter = dataForSpecialtyFilter.filter(hcp => hcp.brick === currentBrick);
             }
-            // Use the correct `speciality` key from the normalized data
             populateSelect('specialtyFilter', [...new Set(dataForSpecialtyFilter.map(hcp => hcp.speciality).filter(Boolean))].sort());
         }
 
-        /**
-         * Populates a select element with options.
-         * @param {string} selectId The ID of the select element.
-         * @param {Array<string>} options An array of strings to use as options.
-         */
         function populateSelect(selectId, options) {
             const select = document.getElementById(selectId);
             const currentValue = select.value;
@@ -963,15 +920,13 @@
             }
         }
 
-        /**
-         * Renders the filtered HCP data into the table.
-         */
         function renderTable() {
             const tbody = document.getElementById('hcpTableBody');
             const noResults = document.getElementById('noResults');
-            
+
             if (filteredData.length === 0) {
                 tbody.innerHTML = '';
+                noResults.innerHTML = `<div><i class="fas fa-clipboard-list"></i></div><p>No HCPs found matching your criteria</p>`;
                 noResults.style.display = 'flex';
                 return;
             }
@@ -980,10 +935,10 @@
             tbody.innerHTML = filteredData.map((hcp, index) => `
                 <tr>
                     <td>
-                        ${hcp.hcps ? `<a href="#" class="hcp-name" onclick="showHCPDetails(${index})">${hcp.hcps}</a>` : 'N/A'}
+                        ${hcp.hcps ? `<a href="#" class="hcp-name" onclick="showHCPDetails(${index}); return false;">${hcp.hcps}</a>` : 'N/A'}
                     </td>
                     <td><span class="specialty-badge">${hcp.speciality || 'N/A'}</span></td>
-                    <td>${hcp.account || 'N/A'}</td>
+                    <td>${hcp.class || 'N/A'}</td>
                     <td><span class="area-badge">${hcp.brick || 'N/A'}</span></td>
                     <td>${hcp.medicalRep || 'N/A'}</td>
                     <td>${hcp.districtManager || 'N/A'}</td>
@@ -991,19 +946,16 @@
             `).join('');
         }
 
-        /**
-         * Updates the statistics displayed in the stats bar.
-         */
         function updateStats() {
             const totalHCPsSpan = document.getElementById('totalHCPs');
             const totalHCPsLabel = document.getElementById('totalHCPsLabel');
-            
+
             document.getElementById('filteredHCPs').textContent = filteredData.length;
-            
+
             const duplicatedHCPsCount = calculateDuplicatedCount(filteredData);
             const duplicatedHCPsSpan = document.getElementById('duplicatedHCPs');
             duplicatedHCPsSpan.textContent = duplicatedHCPsCount;
-            
+
             if (duplicatedHCPsCount > 0) {
                 duplicatedHCPsSpan.classList.add('red');
             } else {
@@ -1019,10 +971,6 @@
             }
         }
 
-        /**
-         * Filters the HCP data based on selected dropdown values and search term.
-         * This function now also respects the initial filter set by the logged-in user.
-         */
         function filterData() {
             const districtFilter = districtFilterSelect.value;
             const repFilter = document.getElementById('repFilter').value;
@@ -1032,14 +980,13 @@
 
             let currentFilteredData = baseDataForUser.filter(hcp => {
                 const matchesDistrict = (loggedInUser && loggedInUser.title === 'District Manager')
-                                             ? true
-                                             : (!districtFilter || hcp.districtManager === districtFilter);
+                                         ? true
+                                         : (!districtFilter || hcp.districtManager === districtFilter);
 
                 const matchesRep = !repFilter || hcp.medicalRep === repFilter;
-                // Corrected key to `speciality`
                 const matchesSpecialty = !specialtyFilter || hcp.speciality === specialtyFilter;
                 const matchesBrick = !brickFilter || hcp.brick === brickFilter;
-                
+
                 const matchesSearch = !searchTerm || Object.values(hcp).some(value =>
                     String(value).toLowerCase().includes(searchTerm)
                 );
@@ -1054,14 +1001,6 @@
             toggleEditListButtonVisibility();
         }
 
-        /**
-         * Formats a mobile number for direct calling.
-         * If the number starts with '0', replaces it with '+2'.
-         * If the number does not start with '0', prepends '+20'.
-         * Removes any non-digit characters.
-         * @param {string} mobileNumber The raw mobile number.
-         * @returns {string} The formatted mobile number for calling.
-         */
         function formatPhoneNumberForCall(mobileNumber) {
             if (!mobileNumber) return '';
             let cleanedNumber = mobileNumber.replace(/\D/g, '');
@@ -1073,10 +1012,6 @@
             }
         }
 
-        /**
-         * Displays the modal with full details for a selected HCP.
-         * @param {number} hcpIndex The index of the HCP in the filteredData array.
-         */
         function showHCPDetails(hcpIndex) {
             const hcp = filteredData[hcpIndex];
             if (!hcp) {
@@ -1085,7 +1020,7 @@
             }
 
             document.getElementById('modalTitle').textContent = hcp.hcps || 'HCP Details';
-            
+
             const detailsContainer = document.getElementById('hcpDetails');
             const formattedMobile = formatPhoneNumberForCall(hcp.mobile);
 
@@ -1093,7 +1028,7 @@
             let availableDaysHtml = '';
             let hasAvailableDays = false;
             daysOfWeek.forEach(day => {
-                if (hcp[day] && hcp[day].trim() !== '') {
+                if (hcp[day] && String(hcp[day]).trim() !== '') {
                     availableDaysHtml += `
                         <div class="detail-row">
                             <span class="detail-label">${day.charAt(0).toUpperCase() + day.slice(1)}</span>
@@ -1105,7 +1040,7 @@
             });
 
             if (!hasAvailableDays) {
-                availableDaysHtml = `<p class="text-gray-600">No specific available days recorded.</p>`;
+                availableDaysHtml = `<p style="color: #6b7280;">No specific available days recorded.</p>`;
             }
 
             detailsContainer.innerHTML = `
@@ -1113,70 +1048,12 @@
                     <h3><i class="fas fa-user-md"></i> Personal Information</h3>
                     <div class="detail-row">
                         <span class="detail-label">Name</span>
-                        <span class="detail-value" id="hcp-name">${hcp.hcps || 'N/A'}</span>
+                        <span class="detail-value">${hcp.hcps || 'N/A'}</span>
                     </div>
                     <div class="detail-row">
                         <span class="detail-label">Specialty</span>
-                        <span class="detail-value specialty" id="hcp-specialty">${hcp.speciality || 'N/A'}</span>
+                        <span class="detail-value specialty">${hcp.speciality || 'N/A'}</span>
                     </div>
-                </div>
-                
-                <div class="detail-section">
-                    <h3><i class="fas fa-building"></i> Practice Information</h3>
-                    <div class="detail-row">
-                        <span class="detail-label">Account</span>
-                        <span class="detail-value" id="hcp-account">${hcp.account || 'N/A'}</span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="detail-label">Brick</span>
-                        <span class="detail-value area" id="hcp-brick">${hcp.brick || 'N/A'}</span>
-                    </div>
-                </div>
-                
-                <div class="detail-section full-width">
-    <h3><i class="fas fa-users"></i> Team Assignment</h3>
-    <div class="detail-row">
-        <span class="detail-label">Medical Rep</span>
-        <span class="detail-value" id="hcp-rep">${hcp.medicalRep || 'N/A'}</span>
-    </div>
-    <div class="detail-row">
-        <span class="detail-label">District Manager</span>
-        <span class="detail-value" id="hcp-manager">${hcp.districtManager || 'N/A'}</span>
-    </div>
-    <div class="detail-row">
-        <span class="detail-label">Governorate</span>
-        <span class="detail-value" id="hcp-governorate">${hcp.governorate || 'N/A'}</span>
-    </div>
-    <!-- Add Area here -->
-    <div class="detail-row">
-        <span class="detail-label">Area</span>
-        <span class="detail-value" id="hcp-area">${hcp.area || 'N/A'}</span>
-    </div>
-</div>
-
-
-                <div class="detail-section full-width">
-                    <h3><i class="fas fa-calendar-alt"></i> Available Days</h3>
-                    <div id="hcp-available-days">
-                        ${availableDaysHtml}
-                    </div>
-                </div>
-
-                <div class="detail-section full-width">
-                    <h3><i class="fas fa-phone"></i> Contact Information</h3>
-                    <div class="detail-row">
-                        <span class="detail-label">Mobile</span>
-                        <span class="detail-value">
-                            ${hcp.mobile ? `<a href="tel:${formattedMobile}">${hcp.mobile}</a>` : 'N/A'}
-                        </span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="detail-label">Address</span>
-                        <span class="detail-value">${hcp.address || 'N/A'}</span>
-                    </div>
-                </div>
-                <div class="detail-section full-width">
-                    <h3><i class="fas fa-info-circle"></i> Other Details</h3>
                     <div class="detail-row">
                         <span class="detail-label">Class</span>
                         <span class="detail-value">${hcp.class || 'N/A'}</span>
@@ -1186,15 +1063,60 @@
                         <span class="detail-value">${hcp.tv || 'N/A'}</span>
                     </div>
                 </div>
+
+                <div class="detail-section">
+                    <h3><i class="fas fa-building"></i> Location</h3>
+                    <div class="detail-row">
+                        <span class="detail-label">Brick</span>
+                        <span class="detail-value area">${hcp.brick || 'N/A'}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Area</span>
+                        <span class="detail-value">${hcp.area || 'N/A'}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Governorate</span>
+                        <span class="detail-value">${hcp.governorate || 'N/A'}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Address</span>
+                        <span class="detail-value">${hcp.address || 'N/A'}</span>
+                    </div>
+                </div>
+
+                <div class="detail-section full-width">
+                    <h3><i class="fas fa-users"></i> Team Assignment</h3>
+                    <div class="detail-row">
+                        <span class="detail-label">Medical Rep</span>
+                        <span class="detail-value">${hcp.medicalRep || 'N/A'}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">District Manager</span>
+                        <span class="detail-value">${hcp.districtManager || 'N/A'}</span>
+                    </div>
+                </div>
+
+                <div class="detail-section full-width">
+                    <h3><i class="fas fa-calendar-alt"></i> Available Days</h3>
+                    ${availableDaysHtml}
+                </div>
+
+                <div class="detail-section full-width">
+                    <h3><i class="fas fa-phone"></i> Contact</h3>
+                    <div class="detail-row">
+                        <span class="detail-label">Mobile</span>
+                        <span class="detail-value">
+                            ${hcp.mobile ? `<a href="tel:${formattedMobile}">${hcp.mobile}</a>` : 'N/A'}
+                        </span>
+                    </div>
+                </div>
             `;
 
             document.getElementById('hcpModal').style.display = 'flex';
             document.body.style.overflow = 'hidden';
+            return false;
         }
 
-        /**
-         * Prints the currently filtered table data.
-         */
         function printTable() {
             const printWindow = window.open('', '_blank');
             printWindow.document.write('<html><head><title>HCP Data Print</title>');
@@ -1216,18 +1138,15 @@
             printWindow.document.write('</style>');
             printWindow.document.write('</head><body>');
             printWindow.document.write('<h1>Healthcare Professional Data</h1>');
-            
+
             const tableHtml = document.getElementById('hcpTable').outerHTML;
             printWindow.document.write(tableHtml);
-            
+
             printWindow.document.write('</body></html>');
             printWindow.document.close();
             printWindow.print();
         }
 
-        /**
-         * Exports the currently filtered HCP data to an XLSX file.
-         */
         function exportToXLSX() {
             if (filteredData.length === 0) {
                 console.warn("No data to export.");
@@ -1235,17 +1154,16 @@
             }
 
             const headers = [
-    'District Manager', 'Governorate', 'Medical Rep', 'Brick', 'Area', 'HCPs',
-    'Speciality', 'Class', 'T.V', 'Account', 'Address', 'Mobile',
-    'Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'
-];
+                'District Manager', 'Governorate', 'Medical Rep', 'Brick', 'Area', 'HCPs',
+                'Speciality', 'Class', 'T.V', 'Address', 'Mobile',
+                'Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'
+            ];
 
-const headerKeys = [
-    'districtManager', 'governorate', 'medicalRep', 'brick', 'area', 'hcps',
-    'speciality', 'class', 'tv', 'account', 'address', 'mobile',
-    'saturday', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday'
-];
-
+            const headerKeys = [
+                'districtManager', 'governorate', 'medicalRep', 'brick', 'area', 'hcps',
+                'speciality', 'class', 'tv', 'address', 'mobile',
+                'saturday', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday'
+            ];
 
             const exportData = [headers];
             filteredData.forEach(row => {
@@ -1257,14 +1175,9 @@ const headerKeys = [
             const ws = XLSX.utils.aoa_to_sheet(exportData);
 
             XLSX.utils.book_append_sheet(wb, ws, "HCP Data");
-
             XLSX.writeFile(wb, "filtered_hcp_data.xlsx");
         }
 
-        /**
-         * Toggles the visibility of the "Edit List" button.
-         * The button is visible only when "All District Managers" is selected in the district filter.
-         */
         function toggleEditListButtonVisibility() {
             if (loggedInUser && loggedInUser.title === 'District Manager') {
                 editListButton.style.display = 'none';
@@ -1275,9 +1188,6 @@ const headerKeys = [
             }
         }
 
-        /**
-         * Sets up all event listeners for filters, search, and modal interactions.
-         */
         function setupEventListeners() {
             districtFilterSelect.addEventListener('change', () => {
                 repFilterSelect.value = '';
@@ -1307,10 +1217,8 @@ const headerKeys = [
             document.getElementById('exportBtn').addEventListener('click', exportToXLSX);
 
             editListButton.addEventListener('click', () => {
-    window.location.href = 'Edit_List.html';
-});
-
-
+                window.location.href = 'Edit_List.html';
+            });
 
             const modal = document.getElementById('hcpModal');
             const closeBtn = document.querySelector('.close');
@@ -1336,18 +1244,17 @@ const headerKeys = [
         }
 
         window.addEventListener('message', function(event) {
-            // In a production environment, verify the origin
-            // if (event.origin !== 'https://your-crm-app.com') return;
-
             if (event.data && event.data.type === 'loggedInUser') {
                 loggedInUser = event.data.user;
                 console.log('Master List received user data:', loggedInUser);
-                
                 initializeApp(loggedInUser);
             }
         });
 
-        document.addEventListener('DOMContentLoaded', () => initializeApp());
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('DOM loaded, initializing...');
+            initializeApp();
+        });
     </script>
 </body>
 </html>
