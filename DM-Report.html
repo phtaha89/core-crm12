@@ -1305,7 +1305,7 @@
             function getMonths() {
 				const months = [];
 				for (let i = 0; i < 12; i++) {
-					const d = new Date(2025, i, 1); // Use 2025 as the year
+					const d = new Date(2026, i, 1); // Use 2026 as the year
 					const monthName = d.toLocaleString('en-US', { month: 'long', year: 'numeric' });
 					const value = d.getFullYear() + '-' + (d.getMonth() + 1).toString().padStart(2, '0');
 					months.push({ name: monthName, value: value });
