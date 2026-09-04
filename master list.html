@@ -201,6 +201,15 @@
     </div>
 
     <script>
+    // FIX: Everything wrapped in an IIFE so none of these variables/functions
+    // leak into (or collide with) the surrounding page's global scope. This is
+    // what caused "Identifier 'supabase' has already been declared" — if this
+    // script tag is ever re-run in the same window (e.g. the host app
+    // re-injects it without a full page reload), a top-level `let supabase`
+    // can't be redeclared. Renamed the variable to `supabaseClient` as well,
+    // since `supabase` is also the name of the global object the CDN script
+    // attaches to `window`.
+    (function () {
         // Supabase configuration
         const SUPABASE_URL = 'https://rhgthtvvgtcczsyjnhol.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJoZ3RodHZ2Z3RjY3pzeWpuaG9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0ODQwNTgsImV4cCI6MjA5MzA2MDA1OH0.VKyBKb3Ud-QF3XLf7HgOnQhbbQzcxYu23vxHTNhC6SU';
@@ -209,7 +218,7 @@
         // and showing an error instead of spinning forever.
         const REQUEST_TIMEOUT_MS = 15000;
 
-        let supabase = null;
+        let supabaseClient = null;
         let hcpData = [];
         let filteredData = [];
         let baseDataForUser = [];
@@ -275,7 +284,7 @@
                 if (typeof window.supabase === 'undefined') {
                     throw new Error('Supabase library failed to load from the CDN. Check your internet connection, ad-blocker, or firewall settings for cdn.jsdelivr.net.');
                 }
-                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                 console.log('Supabase initialized successfully');
                 return true;
             } catch (err) {
@@ -285,7 +294,7 @@
         }
 
         async function fetchAllSupabaseData(tableName, batchSize = 1000) {
-            if (!supabase) {
+            if (!supabaseClient) {
                 showError('Supabase client is not initialized.');
                 return [];
             }
@@ -298,7 +307,7 @@
             while (hasMore) {
                 try {
                     const { data, error } = await withTimeout(
-                        supabase.from(tableName).select('*').range(offset, offset + batchSize - 1),
+                        supabaseClient.from(tableName).select('*').range(offset, offset + batchSize - 1),
                         REQUEST_TIMEOUT_MS,
                         `Fetching "${tableName}"`
                     );
@@ -855,6 +864,7 @@
             console.log('DOM loaded. Starting app...');
             initializeApp();
         });
+    })(); // end IIFE
     </script>
 </body>
 </html>
