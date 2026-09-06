@@ -1701,7 +1701,29 @@
             }
             return allData;
         }
-
+// Get device location as a promise, resolves with nulls if unavailable/denied
+function getCurrentLocation() {
+    return new Promise((resolve) => {
+        if (!navigator.geolocation) {
+            resolve({ latitude: null, longitude: null, accuracy: null });
+            return;
+        }
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                resolve({
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude,
+                    accuracy: position.coords.accuracy
+                });
+            },
+            (error) => {
+                console.warn('Geolocation error:', error);
+                resolve({ latitude: null, longitude: null, accuracy: null });
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+    });
+}
         async function fetchAllData() {
             try {
                 // Fetch both masterlist and visit data from Supabase
@@ -2067,11 +2089,15 @@
                     return null; // No error
                 }
             async handleSubmit() {
-                if (this.isLoading) return;
-                this.setLoading(true);
-                try {
-                    const formData = this.getFormData();
-                    let formActive = '';
+    if (this.isLoading) return;
+    this.setLoading(true);
+    try {
+        const formData = this.getFormData();
+        const deviceLocation = await getCurrentLocation();
+        formData.latitude = deviceLocation.latitude;
+        formData.longitude = deviceLocation.longitude;
+        formData.locationAccuracy = deviceLocation.accuracy;
+        let formActive = '';
                     if (this.elements.hcpBtn.classList.contains('selected')) formActive = 'hcp';
                     else if (this.elements.pharmacyBtn.classList.contains('selected')) formActive = 'pharmacy';
                     else if (this.elements.eventBtn.classList.contains('selected')) formActive = 'event';
@@ -2159,10 +2185,10 @@
                 return targetVisits - visitsThisMonth.length;
             }
             async storeVisitInSupabase(formData) {
-                // Changed globalGoogleData to globalMasterlistData
-                const hcp = globalMasterlistData.find(h => h['HCPS'] === formData.hcpName && h['medical rep'] === formData.medicalRep);
-                const currentRemaining = await this.getRemainingVisits(formData.hcpName);
-                const visitData = { hcp_name: formData.hcpName, specialty: hcp?.['Speciality'], brick: hcp?.['Brick'], target_visits: parseInt(hcp?.['T.V']) || 0, last_visit: formData.visitDate, remaining_visits: currentRemaining - 1, medical_rep: formData.medicalRep, visit_date: formData.visitDate, comments: formData.comments, visit_place: formData.visitPlace, created_at: new Date().toISOString() };
+    // Changed globalGoogleData to globalMasterlistData
+    const hcp = globalMasterlistData.find(h => h['HCPS'] === formData.hcpName && h['medical rep'] === formData.medicalRep);
+    const currentRemaining = await this.getRemainingVisits(formData.hcpName);
+    const visitData = { hcp_name: formData.hcpName, specialty: hcp?.['Speciality'], brick: hcp?.['Brick'], target_visits: parseInt(hcp?.['T.V']) || 0, last_visit: formData.visitDate, remaining_visits: currentRemaining - 1, medical_rep: formData.medicalRep, visit_date: formData.visitDate, comments: formData.comments, visit_place: formData.visitPlace, created_at: new Date().toISOString(), latitude: formData.latitude, longitude: formData.longitude };
                 const response = await fetch(SUPABASE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_API_KEY}`, 'apikey': SUPABASE_API_KEY, 'Prefer': 'return=representation' }, body: JSON.stringify(visitData) });
                 if (!response.ok) { const errorText = await response.text(); throw new Error(`Failed to store visit: ${errorText}`); }
                 const newVisit = await response.json();
@@ -2172,8 +2198,8 @@
                 if (!commentResponse.ok) { const errorText = await commentResponse.text(); throw new Error(`Failed to save comment: ${errorText}`); }
             }
             async storePharmacyInSupabase(formData) {
-                if (!currentMedRep) throw new Error('Medical Rep not logged in.');
-                const visitData = { hcp_name: formData.pharmacyName, specialty: 'Pharmacy', brick: formData.brick, visit_date: formData.visitTimePharmacy, comments: formData.commentsPharmacy, medical_rep: currentMedRep.name, created_at: new Date().toISOString() };
+    if (!currentMedRep) throw new Error('Medical Rep not logged in.');
+    const visitData = { hcp_name: formData.pharmacyName, specialty: 'Pharmacy', brick: formData.brick, visit_date: formData.visitTimePharmacy, comments: formData.commentsPharmacy, medical_rep: currentMedRep.name, created_at: new Date().toISOString(), latitude: formData.latitude, longitude: formData.longitude };
                 const response = await fetch(SUPABASE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_API_KEY}`, 'apikey': SUPABASE_API_KEY, 'Prefer': 'return=representation' }, body: JSON.stringify(visitData) });
                 if (!response.ok) { const errorText = await response.text(); throw new Error(`Failed to store pharmacy visit: ${errorText}`); }
                 globalSupabaseVisits.push((await response.json())[0]);
@@ -2197,8 +2223,8 @@
                 globalSupabaseVisits.push((await response.json())[0]);
             }
             async storeAmDetailsInSupabase(formData) {
-                if (!currentMedRep) throw new Error('Medical Rep not logged in.');
-                const visitData = { hcp_name: formData.amDoctorName, specialty: `AM(${formData.associatedAccount})`, brick: formData.amBrick, visit_date: formData.visitTimeAm, comments: formData.commentsAm, medical_rep: currentMedRep.name, created_at: new Date().toISOString() };
+    if (!currentMedRep) throw new Error('Medical Rep not logged in.');
+    const visitData = { hcp_name: formData.amDoctorName, specialty: `AM(${formData.associatedAccount})`, brick: formData.amBrick, visit_date: formData.visitTimeAm, comments: formData.commentsAm, medical_rep: currentMedRep.name, created_at: new Date().toISOString(), latitude: formData.latitude, longitude: formData.longitude };
                 const response = await fetch(SUPABASE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_API_KEY}`, 'apikey': SUPABASE_API_KEY, 'Prefer': 'return=representation' }, body: JSON.stringify(visitData) });
                 if (!response.ok) { const errorText = await response.text(); throw new Error(`Failed to store AM details: ${errorText}`); }
                 globalSupabaseVisits.push((await response.json())[0]);
