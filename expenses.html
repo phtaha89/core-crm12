@@ -450,10 +450,10 @@
         </div>
     </div>
     <script>
-        // --- SUPABASE SETUP ---
-        const SUPABASE_URL = 'https://rhgthtvvgtcczsyjnhol.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJoZ3RodHZ2Z3RjY3pzeWpuaG9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0ODQwNTgsImV4cCI6MjA5MzA2MDA1OH0.VKyBKb3Ud-QF3XLf7HgOnQhbbQzcxYu23vxHTNhC6SU';
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+       // --- SUPABASE SETUP ---
+var SUPABASE_URL = SUPABASE_URL || 'https://rhgthtvvgtcczsyjnhol.supabase.co';
+var SUPABASE_ANON_KEY = SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJoZ3RodHZ2Z3RjY3pzeWpuaG9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0ODQwNTgsImV4cCI6MjA5MzA2MDA1OH0.VKyBKb3Ud-QF3XLf7HgOnQhbbQzcxYu23vxHTNhC6SU';
+var supabase = window.__expensesSupabaseClient || (window.__expensesSupabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY));
 
         // --- DOM Elements ---
         const roleSelection = document.getElementById('roleSelection');
