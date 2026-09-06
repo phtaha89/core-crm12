@@ -2579,8 +2579,56 @@
 
     function formatDateForInput(date) {
         return date.toISOString().split('T')[0];
-    }
+    }// --- Reverse Geocoding (Location column) ---
+const locationCache = new Map();
 
+async function reverseGeocode(lat, lon) {
+    if (lat === null || lat === undefined || lon === null || lon === undefined) return 'N/A';
+    const key = `${parseFloat(lat).toFixed(5)},${parseFloat(lon).toFixed(5)}`;
+    if (locationCache.has(key)) return locationCache.get(key);
+    try {
+        const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`,
+            { headers: { 'Accept-Language': 'en' } }
+        );
+        if (!response.ok) throw new Error('Geocoding request failed');
+        const data = await response.json();
+        const address = data.display_name || 'Unknown location';
+        locationCache.set(key, address);
+        return address;
+    } catch (error) {
+        console.error('Reverse geocoding error:', error);
+        return 'Unavailable';
+    }
+}
+
+// Builds a clickable Google Maps link wrapping the resolved address text
+function buildMapsLink(lat, lon, addressText) {
+    const mapsUrl = `https://www.google.com/maps?q=${lat},${lon}`;
+    return `<a href="${mapsUrl}" target="_blank" rel="noopener noreferrer" title="Open in Google Maps" style="color: var(--primary); text-decoration: underline; cursor: pointer;">${escapeHtml(addressText)}</a>`;
+}
+
+// Fills in each row's Location cell after the table has been rendered.
+// Runs sequentially with a 1s gap between lookups to respect Nominatim's usage policy.
+async function populateLocationColumn(data) {
+    for (const item of data) {
+        const cell = document.getElementById(`location-${item.id}`);
+        if (!cell) continue;
+        if (item.latitude == null || item.longitude == null) {
+            cell.textContent = 'N/A';
+            continue;
+        }
+        const key = `${parseFloat(item.latitude).toFixed(5)},${parseFloat(item.longitude).toFixed(5)}`;
+        let address;
+        if (!locationCache.has(key)) {
+            address = await reverseGeocode(item.latitude, item.longitude);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        } else {
+            address = locationCache.get(key);
+        }
+        cell.innerHTML = buildMapsLink(item.latitude, item.longitude, address);
+    }
+}
     // NEW FUNCTION: Fetches all data from the Supabase masterlist table using pagination.
     async function fetchMasterlistFromSupabase() {
         let allData = [];
@@ -3098,7 +3146,7 @@
             while (hasMore) {
                 const { data, error } = await supabaseClient
                     .from('healthcarepro_visits')
-                    .select('id,medical_rep,hcp_name,created_at,specialty,brick,target_visits,remaining_visits,comments,visit_place')
+                    .select('id,medical_rep,hcp_name,created_at,specialty,brick,target_visits,remaining_visits,comments,visit_place,latitude,longitude')
                     .gte('created_at', startDate.toISOString())
                     .lte('created_at', endDate.toISOString())
                     .range(offset, offset + PAGE_SIZE - 1);
@@ -3402,6 +3450,7 @@
                 <th><i class="fas fa-clock"></i> Remaining</th>
                 <th><i class="fas fa-comments"></i> Comments</th>
                 <th><i class="fas fa-calendar-alt"></i> Visit Time</th>
+                <th><i class="fas fa-location-dot"></i> Location</th>
                 <th class="action-column">Action</th>
             `);
         } else if (tableType === 'leaves') {
@@ -3422,12 +3471,13 @@
                 <th><i class="fas fa-clock"></i> Remaining</th>
                 <th><i class="fas fa-comments"></i> Comments</th>
                 <th><i class="fas fa-calendar-alt"></i> Visit Time</th>
+                <th><i class="fas fa-location-dot"></i> Location</th>
                 <th class="action-column">Action</th>
             `);
         }
 
         if (data.length === 0) {
-            tableBody.append(`<tr><td colspan="${tableType === 'leaves' ? 5 : 9}" style="text-align: center; padding: 20px;">No data available for this view.</td></tr>`);
+            tableBody.append(`<tr><td colspan="${tableType === 'leaves' ? 5 : 10}" style="text-align: center; padding: 20px;">No data available for this view.</td></tr>`);
             return;
         }
 
@@ -3495,6 +3545,7 @@
                         <td>${item.remaining_visits || '-'}</td>
                         <td>${item.comments || '-'}</td>
                         <td class="visit-time">${formatDateTime(item.created_at)}</td>
+                        <td id="location-${item.id}" style="max-width:220px;white-space:normal;">${(item.latitude != null && item.longitude != null) ? '<i class="fas fa-spinner fa-spin"></i> Loading...' : 'N/A'}</td>
                         <td>
                             ${tableType === 'normal' ? `<button class="archive-button" data-id="${item.id}" title="Archive Visit"><i class="fas fa-archive"></i></button>` : ''}
                             ${tableType === 'archived' ? `
@@ -3526,6 +3577,10 @@
         $('#visitsTable thead th:first-child').off('dblclick').on('dblclick', function() {
             clearHCPFilter();
         });
+
+        if (tableType === 'normal' || tableType === 'archived') {
+            populateLocationColumn(data);
+        }
     }
 
     function filterVisitsTableByHCP(hcpName) {
@@ -5413,11 +5468,36 @@ Thank you.`;
     
 
     // --- Document Ready / Initial Load ---
-    // No login form to wire up anymore: just wait for the father frame's
-    // 'loggedInUser' postMessage (handled above by applyLoggedInUserFromParent).
     $(document).ready(function() {
-        $('#dashboardWaiting').show();
-        $('#dashboard-content').hide();
+        $('#adminLoginToggle').on('change', function() {
+            if ($(this).is(':checked')) {
+                $('#dmSelectGroup').hide();
+                $('#adminUsernameGroup').show();
+                $('#username').prop('required', false);
+                $('#adminUsername').prop('required', true);
+                $('#loginTitle').html('<i class=""></i> Admin Dashboard 🔐');
+            } else {
+                $('#dmSelectGroup').show();
+                $('#adminUsernameGroup').hide();
+                $('#username').prop('required', true);
+                $('#adminUsername').prop('required', false);
+                $('#loginTitle').html('<i class=""></i> Dashboard 🔐');
+            }
+        });
+
+        fetchDistrictManagersForLogin().then(() => {
+            const loggedInUser = localStorage.getItem('loggedInUsername');
+            if (loggedInUser) {
+                $('#login-page').hide();
+                $('#dashboard-content').show();
+                initializeCommonDashboard();
+            } else {
+                $('#login-page').show();
+                $('#dashboard-content').hide();
+                $('#loginForm').on('submit', handleLogin);
+            }
+            
+        });
     });
     
 </script>
